@@ -29,8 +29,12 @@ I've done script to satisfy my personal needs. So you can modify it if you want 
 ### add users:
 - ask user to generate authentication keys with `ssh-keygen` and send pubkey to you.
 - store it in ./keys/user/.ssh/authorized_keys file.
-- then: `./addel.sh`.
+- `./addel.sh`.
 - follow steps.
+
+#### If all you have is a public key from a user in PuTTY-style format, you can convert it to standard openssh format like so:
+`ssh-keygen -i -f keyfile.pub > newkeyfile.pub`
+
 
 ### delete user:
 - `./addel.sh`.
