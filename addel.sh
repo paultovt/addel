@@ -97,7 +97,7 @@ then
             IP=$(echo $EACH | cut -f1 -d":")
             NAME=$(echo $EACH | cut -f3- -d":")
             PORT=$(echo $EACH | cut -f2 -d":")
-            SRVCMD=$"$SRVCMD \"$IP\" \"$NAME\" off"
+            SRVCMD=$"$SRVCMD \"$IP\" \"${NAME//:/ }\" off"
         done
         SRVCMD=$"$SRVCMD 2>&1 >/dev/tty"
         SERVERNUMS=$(eval ${SRVCMD[@]} | tr -d \")
@@ -296,7 +296,7 @@ then
             IP=$(echo $EACH | cut -f1 -d":")
             NAME=$(echo $EACH | cut -f3- -d":")
             PORT=$(echo $EACH | cut -f2 -d":")
-            SRVCMD=$"$SRVCMD \"$IP\" \"$NAME\" on"
+            SRVCMD=$"$SRVCMD \"$IP\" \"${NAME//:/ }\" on"
         done
         SRVCMD=$"$SRVCMD 2>&1 >/dev/tty"
         SERVERNUMS=$(eval ${SRVCMD[@]} | tr -d \")
