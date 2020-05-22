@@ -8,7 +8,7 @@ I've done script to satisfy my personal needs. So you can modify it if you want 
 
 ## Features
 
-- tested on centos, debian, ubuntu.
+- tested on centos, debian, ubuntu servers.
 - only works with your default private key (on user/.ssh folder) that you usually use for servers administration if pubkey authentication used.
 - left full execution output specially to see what's happening.
 - if add user, you can make them sudoers (or not).
