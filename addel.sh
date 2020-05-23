@@ -16,8 +16,10 @@ SCRIPT_DIR="$(cd "$( dirname "$0" )" && pwd)"
 SERVERLIST=$(cat $SCRIPT_DIR/servers.lst | grep -v '^#' | grep -v '^$' | expand | tr -s " " | tr " " ":")
 
 BACKTITLE="ADD/DELETE USERS TO/FROM LINUX SERVERS"
-OPTIONS=("Add users" "" 
-        "Delete user" ""
+OPTIONS=("Add users to servers" "" 
+        "Delete user from servers" ""
+        "" ""
+        "Add new user to <keys> folder" ""
         "Add new server to servers list" "")
 
 ACTION=$(whiptail --clear --backtitle "$BACKTITLE" --menu "Select action:" 0 45 0 "${OPTIONS[@]}" 2>&1 >/dev/tty)
@@ -25,8 +27,7 @@ ACTION=$(whiptail --clear --backtitle "$BACKTITLE" --menu "Select action:" 0 45 
 if [ "$ACTION" ]
 then
     
-    # add user
-    if [ "$ACTION" == "Add users" ]
+    if [ "$ACTION" == "Add users to servers" ]
     then
         USERLIST=$(ls $SCRIPT_DIR/keys)
         USRCMD='whiptail --clear --backtitle "'$BACKTITLE'" --checklist "Select users to add:" 0 0 0'
@@ -119,17 +120,13 @@ then
         set port [lindex $argv 1]
         set auth [lindex $argv 2]
         set login [lindex $argv 3]
-        set pass [lindex $argv 4]
-        set user [lindex $argv 5]
-        set makesudo [lindex $argv 6]
-        set userpass [lindex $argv 7]
+        set pass $env(SUDOPASS)
+        set user [lindex $argv 4]
+        set makesudo [lindex $argv 5]
+        set userpass $env(USERPASS)
 
         set basedir [file dirname $argv0]
 
-        proc color {foreground text} {
-            return [exec tput setaf $foreground]$text[exec tput sgr0]
-        }
-        
         if { $ip eq "" || $port eq "" || $login eq "" || $pass eq "" || $user eq "" } {
             exit
         }
@@ -137,23 +134,20 @@ then
         log_user 1
         set timeout 5
 
-        puts "\n[color 4 Adding\ $user\ to\ server:]"
+        puts "\n\033\[01;34mAdding $user to server\033\[00;0m"
         if { $auth eq "1" } {
             spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port root@$ip useradd -m -s /bin/bash $user
             expect {
                 "assword:" {
                     send "$pass\r"
+                    puts "password entered"
                 }
                 "denied" {
-                    puts "\033\[01;31m"
-                    puts "$ip: Permission denied"
-                    puts "\033\[00;39m"
+                    puts "\033\[01;31m$ip: Permission denied\033\[00;0m"
                     exit 1
                 }
                 timeout {
-                    puts "\033\[01;31m"
-                    puts "$ip: Connection timeout"
-                    puts "\033\[00;39m"
+                    puts "\033\[01;31m$ip: Connection timeout\033\[00;0m"
                     exit 1
                 }
             }
@@ -163,17 +157,14 @@ then
             expect {
                 "sudo" {
                     send "$pass\r"
+                    puts "sudo password entered"
                 }
                 "denied" {
-                    puts "\033\[01;31m"
-                    puts "$ip: Permission denied"
-                    puts "\033\[00;39m"
+                    puts "\033\[01;31m$ip: Permission denied\033\[00;0m"
                     exit 1
                 }
                 timeout {
-                    puts "\033\[01;31m"
-                    puts "$ip: Connection timeout"
-                    puts "\033\[00;39m"
+                    puts "\033\[01;31m$ip: Connection timeout\033\[00;0m"
                     exit 1
                 }
             }
@@ -181,52 +172,59 @@ then
         }
         
         if { $makesudo eq "1" } {
-            puts "\n\n[color 4 Adding\ $user\ to\ sudoers:]"
+            puts "\n\033\[01;34mAdding $user to sudoers\033\[00;0m"
             if { $auth eq "1" } {
                 spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port root@$ip usermod -aG wheel $user ";" usermod -aG sudo $user
                 expect "assword:"
                 send "$pass\r"
+                puts "password entered"
                 expect eof
             } else {
                 spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo usermod -aG wheel $user ";" sudo usermod -aG sudo $user
                 expect "sudo"
                 send "$pass\r"
+                puts "sudo password entered"
                 expect eof
             }
         
-            puts "\n[color 4 Changing\ users\ password:]"
+            puts "\n\033\[01;34mChanging users password\033\[00;0m"
             if { $auth eq "1" } {
                 spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port root@$ip passwd $user
                 expect "assword:"
                 sleep 0.5
                 send "$pass\r"
+                puts "password entered"
                 expect ":"
                 sleep 0.5
                 send "$userpass\r"
                 expect ":"
                 sleep 0.5
                 send "$userpass\r"
+                puts "user password entered"
                 expect eof
             } else {
                 spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo passwd $user
                 expect "sudo"
                 sleep 0.5
                 send "$pass\r"
+                puts "sudo password entered"
                 expect ":"
                 sleep 0.5
                 send "$userpass\r"
                 expect ":"
                 sleep 0.5
                 send "$userpass\r"
+                puts "user password entered"
                 expect eof
             }
         }
         
-        puts "\n[color 4 Copying\ key\ files:]"
+        puts "\n\033\[01;34mCopying key files\033\[00;0m"
         if { $auth eq "1" } {
             spawn -noecho scp -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -r -P $port $basedir/keys/$user/.ssh root@$ip:/home/$user/
             expect "assword:"
             send "$pass\r"
+            puts "password entered"
             expect eof
         } else {
             spawn -noecho scp -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -r -P $port $basedir/keys/$user/.ssh $login@$ip:/tmp/
@@ -237,19 +235,22 @@ then
             spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo mv /tmp/.ssh /home/$user/
             expect "sudo"
             send "$pass\r"
+            puts "sudo password entered"
             expect eof
         }
 
-        puts "\n[color 4 Chmoding\ key\ files]"
+        puts "\n\033\[01;34mChmoding key files\033\[00;0m"
         if { $auth eq "1" } {
             spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port root@$ip chown -R $user. /home/$user/.ssh/ ";" chmod 700 /home/$user/.ssh/ ";" sudo chmod 600 /home/$user/.ssh/authorized_keys
             expect "assword:"
             send "$pass\r"
+            puts "password entered"
             expect eof
         } else {
             spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo chown -R $user. /home/$user/.ssh/ ";" sudo chmod 700 /home/$user/.ssh/ ";" sudo chmod 600 /home/$user/.ssh/authorized_keys
             expect "sudo"
             send "$pass\r"
+            puts "sudo password entered"
             expect eof
         }' > $SCRIPT_DIR/add_ssh.exp
 
@@ -261,16 +262,14 @@ then
                 SERVERNAME=$(echo $SERVER | cut -f3 -d":")
                 PORT=$(echo $SERVER | cut -f2 -d":")
                 echo
-                echo -e "\nAdding $(tput setaf 3)$(tput bold)$USER $(tput sgr 0)to $(tput setaf 3)$(tput bold)$SERVERNAME ($IP)$(tput sgr 0)"
-                expect $SCRIPT_DIR/add_ssh.exp $IP $PORT $AUTHMETH $LOGIN $SUDOPASS $USER $MAKESUDO $USERPASS 
+                echo -e "\n$(tput setaf 3)$(tput bold)Adding $USER to $SERVERNAME ($IP)$(tput sgr 0)"
+                SUDOPASS=$SUDOPASS USERPASS=$USERPASS expect $SCRIPT_DIR/add_ssh.exp $IP $PORT $AUTHMETH $LOGIN $USER $MAKESUDO
             done
         done
         rm $SCRIPT_DIR/add_ssh.exp
-        echo
 
 
-    # delete user
-    elif [ "$ACTION" == "Delete user" ]
+    elif [ "$ACTION" == "Delete user from servers" ]
     then
         USER=$(whiptail --clear --backtitle "$BACKTITLE" --inputbox "Enter user to DELETE:" 8 40 2>&1 >/dev/tty)
         if [ -z "$USER" ]
@@ -317,12 +316,8 @@ then
         set ip [lindex $argv 0]
         set port [lindex $argv 1]
         set login [lindex $argv 2]
-        set pass [lindex $argv 3]
-        set user [lindex $argv 4]
-
-        proc color {foreground text} {
-            return [exec tput setaf $foreground]$text[exec tput sgr0]
-        }
+        set user [lindex $argv 3]
+        set pass $env(SUDOPASS)
 
         if { $ip eq "" || $port eq "" || $login eq "" || $pass eq "" || $user eq ""} {
             exit 1
@@ -331,22 +326,19 @@ then
         set timeout 5
         log_user 1
 
-        puts "\n[color 4 Deleting\ $user\ from\ $ip]"
+        puts "\n\033\[01;33mDeleting $user from $ip\033\[00;0m"
         spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo pkill -9 -u $user ";" sudo mv /home/$user /home/$user"_deleted" ";" sudo userdel -f $user
         expect {
             "sudo" {
                 send "$pass\r"
+                puts "sudo password entered"
             }
             "denied" {
-                puts "\033\[01;31m"
-                puts "$ip: Permission denied"
-                puts "\033\[00;39m"
+                puts "\033\[01;31m$ip: Permission denied\033\[00;0m"
                 exit 1
             }
             timeout {
-                puts "\033\[01;31m"
-                puts "$ip: Connection timeout"
-                puts "\033\[00;39m"
+                puts "\033\[01;31m$ip: Connection timeout\033\[00;0m"
                 exit 1
             }
         }
@@ -357,13 +349,30 @@ then
             IP=$(echo $SERVER | cut -f1 -d":")
             SERVERNAME=$(echo $SERVER | cut -f3 -d":")
             PORT=$(echo $SERVER | cut -f2 -d":")
-            echo
-            expect $SCRIPT_DIR/del_ssh.exp $IP $PORT $LOGIN $SUDOPASS $USER
+            SUDOPASS=$SUDOPASS expect $SCRIPT_DIR/del_ssh.exp $IP $PORT $LOGIN $USER
         done
         rm $SCRIPT_DIR/del_ssh.exp
-        echo
 
-    # add server
+
+    elif [ "$ACTION" == "Add new user to <keys> folder" ]
+    then
+        USERNAME=$(whiptail --clear --backtitle "$BACKTITLE" --inputbox "Enter new username:" 8 40 2>&1 >/dev/tty)
+        if [ -z "$USERNAME" ]
+        then
+            exit 0
+        fi
+
+        PUBKEY=$(whiptail --clear --backtitle "$BACKTITLE" --inputbox "Paste pubkey (everything after 'ssh-rsa'):" 8 80 2>&1 >/dev/tty)
+        if [ -z "$PUBKEY" ]
+        then
+            exit 0
+        fi
+
+        mkdir -p $SCRIPT_DIR/keys/"$USERNAME"/.ssh
+        echo "ssh-rsa "$PUBKEY > $SCRIPT_DIR/keys/$USERNAME/.ssh/authorized_keys
+        echo -e "\n$(tput setaf 3)$(tput bold)Added $USERNAME to <keys> folder.$(tput sgr 0)\n"
+
+
     elif [ "$ACTION" == "Add new server to servers list" ]
     then
         IP=$(whiptail --clear --backtitle "$BACKTITLE" --inputbox "Enter IP address:" 8 40 2>&1 >/dev/tty)
@@ -397,7 +406,7 @@ then
         done
 
         echo -e $IP"$TAB1"$PORT"$TAB2"${SERVERNAME// /_} >> $SCRIPT_DIR/servers.lst
-        echo -e "\n$(tput setaf 3)$(tput bold)Added$(tput sgr 0) new server $(tput setaf 3)$(tput bold)$SERVERNAME ($IP)$(tput sgr 0) to servers list.\n"
+        echo -e "\n$(tput setaf 3)$(tput bold)Added $SERVERNAME ($IP) to servers list.$(tput sgr 0)\n"
     else
         exit 0
     fi
