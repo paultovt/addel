@@ -8,10 +8,10 @@ I've done script to satisfy my personal needs. So you can modify it if you want 
 
 ## Features
 
-- tested on centos, debian, ubuntu servers.
+- tested on centos, debian and ubuntu servers.
 - only works with your default private key (on user/.ssh folder) that you usually use for servers administration if pubkey authentication used.
 - left full execution output specially to see what's happening.
-- if add user, you can make them sudoers (or not).
+- if add users, you can make them sudoers (or not).
 - if delete user, it does: kill all processes owned by user; rename users folder to user_deleted; `userdel`.
 
 ## Requirements
@@ -27,10 +27,10 @@ I've done script to satisfy my personal needs. So you can modify it if you want 
 ## Using
 
 ### add users:
-- ask user to generate authentication keys with `ssh-keygen` and send pubkey to you.
-- store it in ./keys/user/.ssh/authorized_keys file.
+- ask user to generate authentication keys with `ssh-keygen` and send pubkey to you. 
 - `./addel.sh`.
-- follow steps.
+- *"Add new user to \<keys\> folder"*.
+- *"Add users to servers"*.
 
 #### If all you have is a public key from a user in PuTTY-style format, you can convert it to standard openssh format like so:
 `ssh-keygen -i -f keyfile.pub > newkeyfile.pub`
