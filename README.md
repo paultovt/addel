@@ -2,7 +2,7 @@
 
 Sometimes there is a need to add or remove users to/from a bunch of servers quickly when hire or fire staff. Or need to add admins to brand new server. This script allows you to do that in few steps.
 
-I've done script to satisfy my personal needs. So you can modify it if you want more functionality. Or you can share your idea.
+I've done this script to satisfy my personal needs. So you can modify it if you want more functionality. Or you can share your idea.
 
 #### If you don't like this script, then make your own, goddammit!
 
