@@ -19,6 +19,8 @@ BACKTITLE="ADD/DELETE USERS TO/FROM LINUX SERVERS"
 OPTIONS=("Add users to servers" "" 
         "Delete user from servers" ""
         "" ""
+        "Run sudo command" ""
+        "" ""
         "Add new user to <keys> folder" ""
         "Add new server to servers list" "")
 
@@ -232,7 +234,7 @@ then
         }
         
         if { $auth eq "2" } {
-            spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo mv /tmp/.ssh /home/$user/
+            spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip sudo rm -r /home/$user/.ssh ";" sudo mv /tmp/.ssh /home/$user/
             expect "sudo"
             send "$pass\r"
             puts "sudo password entered"
@@ -352,6 +354,91 @@ then
             SUDOPASS=$SUDOPASS expect $SCRIPT_DIR/del_ssh.exp $IP $PORT $LOGIN $USER
         done
         rm $SCRIPT_DIR/del_ssh.exp
+
+    elif [ "$ACTION" == "Run sudo command" ]
+    then
+        CMD=$(whiptail --clear --backtitle "$BACKTITLE" --inputbox "Enter sudo command (with sudo in the beginning):" 8 140 2>&1 >/dev/tty)
+        if [ -z "$CMD" ]
+        then
+            exit 0
+        fi
+        LOGIN=$(whiptail --clear --backtitle "$BACKTITLE" --inputbox "Enter YOUR SSH login:" 8 40 2>&1 >/dev/tty)
+        if [ -z "$LOGIN" ]
+        then
+            exit 0
+        fi
+        SUDOPASS=$(whiptail --clear --backtitle "$BACKTITLE" --passwordbox "Enter YOUR sudo password:" 8 40 2>&1 >/dev/tty)
+        if [ -z "$SUDOPASS" ]
+        then
+            exit 0
+        fi
+
+        SRVCMD='whiptail --clear --backtitle "$BACKTITLE" --checklist "Select servers:" 0 50 0'
+        s=0
+        for EACH in $SERVERLIST
+        do
+            ((s++))
+            IP=$(echo $EACH | cut -f1 -d":")
+            NAME=$(echo $EACH | cut -f3- -d":")
+            PORT=$(echo $EACH | cut -f2 -d":")
+            SRVCMD=$"$SRVCMD \"$IP\" \"${NAME//:/ }\" on"
+        done
+        SRVCMD=$"$SRVCMD 2>&1 >/dev/tty"
+        SERVERNUMS=$(eval ${SRVCMD[@]} | tr -d \")
+        if [ "$SERVERNUMS" ]
+        then
+            SERVERS=''
+            for SERVER in $SERVERNUMS
+            do
+                SERVERS=$"$SERVERS $(cat $SCRIPT_DIR/servers.lst | grep -v '^#' | grep -v '^$' | expand | tr -s " " | tr " " ":" | grep $SERVER)"
+            done
+        else
+            exit 0
+        fi
+
+        echo '
+        #!/usr/bin/expect
+
+        set ip [lindex $argv 0]
+        set port [lindex $argv 1]
+        set login [lindex $argv 2]
+        set cmd [lindex $argv 3]
+        set pass $env(SUDOPASS)
+
+        if { $ip eq "" || $port eq "" || $login eq "" || $pass eq "" || $cmd eq ""} {
+            exit 1
+        }
+
+        set timeout 5
+        log_user 1
+
+        puts "\n\033\[01;33mRunning command on $ip\033\[00;0m"
+        spawn -noecho ssh -t -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $port $login@$ip $cmd
+        expect {
+            "sudo" {
+                send "$pass\r"
+                puts "sudo password entered"
+            }
+            "denied" {
+                puts "\033\[01;31m$ip: Permission denied\033\[00;0m"
+                exit 1
+            }
+            timeout {
+                puts "\033\[01;31m$ip: Connection timeout\033\[00;0m"
+                exit 1
+            }
+        }
+        set timeout 300
+        expect eof' > $SCRIPT_DIR/cmd_ssh.exp
+
+        for SERVER in $SERVERS
+        do
+            IP=$(echo $SERVER | cut -f1 -d":")
+            SERVERNAME=$(echo $SERVER | cut -f3 -d":")
+            PORT=$(echo $SERVER | cut -f2 -d":")
+            SUDOPASS=$SUDOPASS expect $SCRIPT_DIR/cmd_ssh.exp $IP $PORT $LOGIN "$CMD"
+        done
+        rm $SCRIPT_DIR/cmd_ssh.exp
 
 
     elif [ "$ACTION" == "Add new user to <keys> folder" ]
